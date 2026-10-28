@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* Village Media brand, sampled from public/LOGO.png (same tokens as the ad platform).
+   "brand" is the logo blue and is the main accent; the four logo colours are for stripes and highlights. */
+@theme {
+  --color-brand-50: #e6f5fd;
+  --color-brand-100: #ccebfb;
+  --color-brand-200: #99d6f6;
+  --color-brand-300: #5cbcef;
+  --color-brand-400: #23a3e6;
+  --color-brand-500: #0486cd;
+  --color-brand-600: #036fab;
+  --color-brand-700: #035a8b;
+  --color-brand-800: #05496f;
+  --color-brand-900: #083b5a;
+  --color-brand-950: #06263b;
+
+  --color-logo-red: #e64018;
+  --color-logo-gold: #dfa90d;
+  --color-logo-green: #2e9737;
+  --color-logo-blue: #0486cd;
+
+  /* Text on solid coloured buttons/badges. */
+  --color-on-accent: #ffffff;
+  --color-on-light: #18181b;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+}
+
+body {
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  background: #09090b;
+  color: #e5e7eb;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The four logo colours side by side, as on the Village Media banners. */
+.brand-stripe {
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    var(--color-logo-red) 0 25%,
+    var(--color-logo-gold) 25% 50%,
+    var(--color-logo-green) 50% 75%,
+    var(--color-logo-blue) 75% 100%
+  );
+}

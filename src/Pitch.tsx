@@ -2,12 +2,15 @@ import { Suspense, lazy, useEffect, useRef, useState, type PointerEvent, type Re
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-import { isSupabaseConfigured, listPackages, supabase, type Ad, type SalesPackage, type Tuktuk } from './lib/live'
+import { getSupabase, isSupabaseConfigured, listPackages, type Ad, type SalesPackage, type Tuktuk } from './lib/live'
 import { EXTRA_AREA_FEE, TERM_OPTIONS, VILLAGE_MEDIA, formatRand, signupUrl } from './lib/site'
+import { dismissSplashWhen, splashLifting } from './lib/splash'
 import { ProjectionSection } from './components/pitch/ProjectionSection'
 
-// three.js is most of the bundle; load the hero map after the page text has painted.
-const CityMapScene = lazy(() => import('./components/pitch/CityMapScene').then((m) => ({ default: m.CityMapScene })))
+// three.js is most of the bundle, so it is its own chunk. Start fetching it straight away;
+// the loading screen waits for it so the map is already there when the screen lifts.
+const mapModule = import('./components/pitch/CityMapScene')
+const CityMapScene = lazy(() => mapModule.then((m) => ({ default: m.CityMapScene })))
 
 gsap.registerPlugin(ScrollTrigger, useGSAP)
 
@@ -162,7 +165,7 @@ function SectionHeading({ eyebrow, title, intro }: { eyebrow: string; title: str
 /** A full-width band of the pitch with generous breathing room and slow-moving colour glows. */
 function Band({ children, glow, className = '', id }: { children: ReactNode; glow?: [string, string]; className?: string; id?: string }) {
   return (
-    <section id={id} className={`relative isolate overflow-hidden px-5 py-24 sm:px-8 sm:py-32 lg:px-12 lg:py-40 ${className}`}>
+    <section id={id} className={`relative isolate overflow-hidden px-5 py-20 sm:px-8 sm:py-32 lg:px-12 lg:py-40 ${className}`}>
       {glow && (
         <>
           <div data-glow className={`pointer-events-none absolute -left-40 top-10 -z-10 h-96 w-96 rounded-full opacity-25 blur-3xl ${glow[0]}`} aria-hidden />
@@ -209,26 +212,38 @@ export function Pitch() {
   const [tuktuks, setTuktuks] = useState<Tuktuk[]>([])
   const [ads, setAds] = useState<Ad[]>([])
   const [packages, setPackages] = useState<SalesPackage[]>([])
+  // The map is downloaded behind the loading screen but only built as it lifts, so building the
+  // 3D scene never stutters the logo animation, and the map's zoom-in plays in view.
+  const [showMap, setShowMap] = useState(false)
+
+  useEffect(() => {
+    const logo = document.querySelector<HTMLImageElement>('[data-hero="logo"]')
+    dismissSplashWhen(Promise.all([mapModule, logo?.decode()]))
+    splashLifting.then(() => setShowMap(true))
+  }, [])
 
   useEffect(() => {
     // Without Supabase the page uses the brochure figures and packages below.
     if (!isSupabaseConfigured) return
-    supabase.from('tuktuks').select('*').then(({ data }) => setTuktuks((data as Tuktuk[]) ?? []))
-    supabase
-      .from('creatives')
-      .select('*')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => setAds((data as Ad[]) ?? []))
+    getSupabase().then((supabase) => {
+      supabase.from('tuktuks').select('*').then(({ data }) => setTuktuks((data as Tuktuk[]) ?? []))
+      supabase
+        .from('creatives')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => setAds((data as Ad[]) ?? []))
+    })
     listPackages().then(setPackages).catch(() => {})
   }, [])
 
   const scrollToProjection = () => document.getElementById('projection')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-  // Links to /#projection land on the projection.
+  // Links to /#projection land on the projection, once the loading screen is out of the way.
   useEffect(() => {
     if (window.location.hash !== '#projection') return
-    const t = window.setTimeout(scrollToProjection, 400)
+    let t = 0
+    splashLifting.then(() => (t = window.setTimeout(scrollToProjection, 400)))
     return () => window.clearTimeout(t)
   }, [])
 
@@ -242,12 +257,13 @@ export function Pitch() {
   const shownPackages = packages.length ? packages : BROCHURE_PACKAGES
   const signupHref = (p: SalesPackage) => signupUrl({ package: p.id })
 
-  // Hero entrance — once, on load.
+  // Hero entrance — once, as the loading screen lifts.
   useGSAP(
     () => {
       gsap.matchMedia().add('(prefers-reduced-motion: no-preference)', () => {
-        gsap
-          .timeline({ defaults: { ease: 'expo.out' } })
+        const intro = gsap.timeline({ paused: true, defaults: { ease: 'expo.out' } })
+        splashLifting.then(() => gsap.delayedCall(0.25, () => intro.play()))
+        intro
           .from('[data-hero="logo"]', { scale: 0.2, rotate: -20, opacity: 0, duration: 1.2, ease: 'back.out(1.8)' })
           .from('[data-hero-word]', { yPercent: 120, rotateX: -80, opacity: 0, transformPerspective: 800, duration: 1.2, stagger: 0.05 }, '-=0.7')
           .from('[data-hero="sub"]', { y: 30, opacity: 0, filter: 'blur(10px)', duration: 1 }, '-=0.8')
@@ -367,11 +383,13 @@ export function Pitch() {
             }),
           )
 
-          // Savings rows wipe in.
-          gsap.fromTo(
-            '[data-compare-row]',
-            { clipPath: 'inset(0 100% 0 0)', opacity: 0 },
-            { clipPath: 'inset(0 0% 0 0)', opacity: 1, duration: 0.9, stagger: 0.09, ease: 'power3.out', scrollTrigger: once('[data-compare]') },
+          // Savings rows wipe in (cards on phones, the table from md up).
+          all('[data-compare]').forEach((el) =>
+            gsap.fromTo(
+              el.querySelectorAll('[data-compare-row]'),
+              { clipPath: 'inset(0 100% 0 0)', opacity: 0 },
+              { clipPath: 'inset(0 0% 0 0)', opacity: 1, duration: 0.9, stagger: 0.09, ease: 'power3.out', scrollTrigger: once(el) },
+            ),
           )
 
           gsap.from('[data-pillar]', { scale: 0, rotate: -60, duration: 1.1, stagger: 0.14, ease: 'back.out(2.4)', scrollTrigger: once('[data-pillars]') })
@@ -430,19 +448,21 @@ export function Pitch() {
       <section data-hero-section className="relative isolate flex min-h-svh flex-col overflow-hidden bg-zinc-950">
         <div className="brand-stripe absolute inset-x-0 top-0 z-20" aria-hidden />
         <div data-hero="scene" className="absolute inset-0 -z-10">
-          <Suspense fallback={null}>
-            <CityMapScene theme="dark" className="h-full w-full" />
-          </Suspense>
+          {showMap && (
+            <Suspense fallback={null}>
+              <CityMapScene theme="dark" className="h-full w-full" />
+            </Suspense>
+          )}
         </div>
         <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-zinc-950/85 via-zinc-950/30 to-transparent" aria-hidden />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-zinc-950 to-transparent" aria-hidden />
 
         <div
           data-hero="content"
-          className="mx-auto flex w-full max-w-[96rem] flex-1 items-center px-5 pb-20 pt-20 sm:px-8 lg:px-12 lg:py-16 lg:[@media(max-height:820px)]:py-8"
+          className="mx-auto flex w-full max-w-[96rem] flex-1 items-center px-5 pb-14 pt-12 sm:px-8 sm:pb-20 sm:pt-20 lg:px-12 lg:py-16 lg:[@media(max-height:820px)]:py-8 short:py-5!"
         >
           <div className="max-w-5xl">
-            <div className="mb-6 flex flex-wrap items-center gap-5 sm:gap-7">
+            <div className="mb-4 flex flex-wrap items-center gap-5 sm:mb-6 sm:gap-7 short:mb-2!">
               <img
                 data-hero="logo"
                 src="/logo.webp"
@@ -450,30 +470,33 @@ export function Pitch() {
                 height={384}
                 fetchPriority="high"
                 alt="Village Media — a Village Tuk advertising network"
-                className="h-20 w-auto drop-shadow-2xl sm:h-28 lg:h-32 lg:[@media(max-height:820px)]:h-20"
+                className="h-16 w-auto drop-shadow-2xl sm:h-28 lg:h-32 lg:[@media(max-height:820px)]:h-20 short:h-12!"
               />
             </div>
-            <h1 className="mb-5 text-[clamp(2.4rem,5.4vw,5.75rem)] font-black italic leading-[0.95] tracking-tight" aria-label={HEADLINE}>
+            <h1
+              className="mb-4 text-[clamp(2rem,4vw+1.1rem,5.75rem)] font-black italic leading-[0.95] tracking-tight text-balance sm:mb-5 short:mb-2! short:text-[clamp(1.6rem,4.2vw,2.4rem)]!"
+              aria-label={HEADLINE}
+            >
               <SplitWords text={HEADLINE} wordAttr="data-hero-word" />
             </h1>
-            <p data-hero="sub" className="max-w-2xl text-lg text-zinc-300 sm:text-xl">
+            <p data-hero="sub" className="max-w-2xl text-base text-zinc-300 sm:text-xl short:text-sm!">
               Village Media gives your business continuous, mobile exposure throughout Midvaal — at a price local businesses
               can afford.
             </p>
-            <p data-hero="move" className="mt-5 text-xl font-black uppercase italic sm:text-2xl">
+            <p data-hero="move" className="mt-4 text-lg font-black uppercase italic sm:mt-5 sm:text-2xl short:mt-2! short:text-base!">
               Local businesses{' '}
               <span className="text-logo-gold underline decoration-logo-red decoration-4 underline-offset-4">on the move</span>
             </p>
-            <div data-hero="cta" className="mt-8 flex flex-wrap gap-3">
+            <div data-hero="cta" className="mt-6 flex flex-wrap gap-3 sm:mt-8 short:mt-3!">
               <button
                 onClick={scrollToProjection}
-                className="rounded-full bg-brand-500 px-7 py-4 text-base font-semibold text-on-accent shadow-xl shadow-brand-500/30 hover:bg-brand-400"
+                className="rounded-full bg-brand-500 px-6 py-3.5 text-base font-semibold text-on-accent shadow-xl shadow-brand-500/30 hover:bg-brand-400 sm:px-7 sm:py-4"
               >
                 📈 See what your ad gets
               </button>
               <a
                 href={signupUrl()}
-                className="rounded-full bg-logo-green px-7 py-4 text-base font-semibold text-on-accent shadow-xl shadow-green-500/25 hover:brightness-110"
+                className="rounded-full bg-logo-green px-6 py-3.5 text-base font-semibold text-on-accent shadow-xl shadow-green-500/25 hover:brightness-110 sm:px-7 sm:py-4"
               >
                 ✎ Sign up now
               </a>
@@ -577,13 +600,15 @@ export function Pitch() {
                       {p.description.split('·')[1].trim()}
                     </p>
                   )}
-                  <div className="mb-6 flex justify-center gap-2 text-sm font-semibold">
+                  <div className="mb-6 flex flex-wrap justify-center gap-2 text-xs font-semibold sm:text-sm">
                     {TERM_OPTIONS.map((t) => (
-                      <span key={t.value} className="rounded-full border border-zinc-700 px-3 py-1 text-zinc-300">
+                      <span key={t.value} className="whitespace-nowrap rounded-full border border-zinc-700 px-3 py-1 text-zinc-300">
                         📅 {t.label}
                       </span>
                     ))}
-                    <span className="rounded-full border border-zinc-700 px-3 py-1 text-zinc-300">📍 +R{EXTRA_AREA_FEE} per extra area</span>
+                    <span className="whitespace-nowrap rounded-full border border-zinc-700 px-3 py-1 text-zinc-300">
+                      📍 +R{EXTRA_AREA_FEE} per extra area
+                    </span>
                   </div>
                   <ul className="mb-8 space-y-2.5 text-zinc-300 sm:text-lg">
                     {p.features.map((f) => (
@@ -639,8 +664,32 @@ export function Pitch() {
           ))}
         </div>
 
-        <div data-compare className="overflow-x-auto rounded-3xl border border-zinc-800">
-          <table className="w-full min-w-[560px] text-left sm:text-lg">
+        {/* Phones: one card per medium, so the savings are never scrolled out of sight. */}
+        <div data-compare className="grid gap-3 md:hidden">
+          {COMPARE.map((c) => (
+            <div key={c.medium} data-compare-row className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+              <p className="flex items-baseline justify-between gap-3 font-semibold">
+                <span>
+                  <span className="mr-2" aria-hidden>
+                    {c.icon}
+                  </span>
+                  {c.medium}
+                </span>
+                <span className="shrink-0 text-sm text-red-400">up to {rand(c.max)}</span>
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                {PLAYS.map((p) => (
+                  <p key={p.name} className="rounded-xl bg-green-500/10 px-3 py-2">
+                    <span className="block text-xs text-zinc-400">Save with {p.name}</span>
+                    <b className="text-green-300">{rand(c.max - p.fee)} / month</b>
+                  </p>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div data-compare className="hidden overflow-hidden rounded-3xl border border-zinc-800 md:block">
+          <table className="w-full text-left lg:text-lg">
             <thead className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-500 sm:text-sm">
               <tr>
                 <th className="px-5 py-4">Instead of</th>

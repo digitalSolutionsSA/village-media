@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Only the columns the pitch reads (village-tuktuks-ads-main/src/types).
 
@@ -32,11 +32,14 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 /** True once VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY have been filled in. */
 export const isSupabaseConfigured = Boolean(url && anonKey)
 
-export const supabase = createClient(url || 'https://placeholder.supabase.co', anonKey || 'placeholder-anon-key')
+// The client is its own chunk: only downloaded when Supabase is configured, and never before first paint.
+let client: Promise<SupabaseClient> | undefined
+export const getSupabase = () =>
+  (client ??= import('@supabase/supabase-js').then(({ createClient }) => createClient(url!, anonKey!)))
 
 export async function listPackages(): Promise<SalesPackage[]> {
   if (!isSupabaseConfigured) return []
-  const { data, error } = await supabase
+  const { data, error } = await (await getSupabase())
     .from('sales_packages')
     .select('*')
     .eq('active', true)

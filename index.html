@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#09090b" />
     <title>Village Media — Advertise on every Village Tuk</title>
     <meta
@@ -10,8 +10,99 @@
       content="Put your business in front of thousands of local customers every month, on the screens inside Village Tuk passenger vehicles across Midvaal."
     />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="preload" href="/logo.webp" as="image" type="image/webp" fetchpriority="high" />
+    <!-- The loading screen is plain HTML/CSS so it paints before any script arrives. src/lib/splash.ts lifts it. -->
+    <style>
+      html { background: #09090b; }
+      #splash {
+        --red: #e64018; --gold: #dfa90d; --green: #2e9737; --blue: #0486cd;
+        position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;
+        overflow: hidden; color: #a1a1aa; font: 800 clamp(10px, 2.6vw, 13px)/1 system-ui, 'Segoe UI', Roboto, sans-serif;
+      }
+      #splash .cols { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, 1fr); }
+      #splash .cols i {
+        background: #09090b; box-shadow: inset 0 -4px var(--c);
+        transition: transform .8s cubic-bezier(.76, 0, .24, 1);
+      }
+      #splash .cols i:nth-child(1) { --c: var(--red); }
+      #splash .cols i:nth-child(2) { --c: var(--gold); transition-delay: .07s; }
+      #splash .cols i:nth-child(3) { --c: var(--green); transition-delay: .14s; }
+      #splash .cols i:nth-child(4) { --c: var(--blue); transition-delay: .21s; }
+      #splash .stage {
+        position: relative; display: grid; justify-items: center; gap: clamp(18px, 4vh, 30px);
+        transition: transform .55s cubic-bezier(.6, 0, .4, 1), opacity .45s ease, filter .55s ease;
+      }
+      #splash .mark { position: relative; width: min(46vw, 34vh, 220px); aspect-ratio: 1; display: grid; place-items: center; }
+      #splash .glow {
+        position: absolute; inset: 6%; border-radius: 50%; filter: blur(34px); opacity: .55;
+        background: conic-gradient(var(--red), var(--gold), var(--green), var(--blue), var(--red));
+        animation: vm-glow 4s linear infinite;
+      }
+      #splash svg.ring { position: absolute; inset: -14%; width: 128%; height: 128%; animation: vm-spin 2.6s linear infinite; }
+      #splash svg.ring circle {
+        fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 52 199.3;
+        animation: vm-draw 1s cubic-bezier(.65, 0, .35, 1) both;
+      }
+      #splash svg.ring circle:nth-child(2) { stroke-dashoffset: -62.8; animation-delay: .08s; }
+      #splash svg.ring circle:nth-child(3) { stroke-dashoffset: -125.7; animation-delay: .16s; }
+      #splash svg.ring circle:nth-child(4) { stroke-dashoffset: -188.5; animation-delay: .24s; }
+      #splash img {
+        position: relative; width: 80%; height: auto; filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .55));
+        animation: vm-pop .8s cubic-bezier(.34, 1.56, .64, 1) both;
+      }
+      #splash .tag { display: flex; flex-wrap: wrap; justify-content: center; gap: .1em .5em; margin: 0; text-transform: uppercase; letter-spacing: .3em; font-style: italic; }
+      #splash .tag span { opacity: 0; animation: vm-rise .7s cubic-bezier(.22, 1, .36, 1) forwards; }
+      #splash .tag span:nth-child(1) { animation-delay: .35s; }
+      #splash .tag span:nth-child(2) { animation-delay: .45s; }
+      #splash .tag span:nth-child(3) { animation-delay: .55s; color: var(--gold); }
+      #splash .tag span:nth-child(4) { animation-delay: .65s; color: var(--gold); }
+      #splash .bar { width: min(56vw, 220px); height: 3px; border-radius: 3px; background: #27272a; overflow: hidden; }
+      #splash .bar b {
+        display: block; height: 100%; width: 100%; transform-origin: left; transform: scaleX(.04);
+        background: linear-gradient(90deg, var(--red) 0 25%, var(--gold) 25% 50%, var(--green) 50% 75%, var(--blue) 75%);
+        animation: vm-load 2.2s cubic-bezier(.2, .7, .3, 1) forwards;
+        transition: transform .25s ease;
+      }
+      #splash.done .bar b { animation: none; transform: scaleX(1); }
+      #splash.out .stage { transform: scale(.82) translateY(-4%); opacity: 0; filter: blur(8px); }
+      #splash.out .cols i { transform: translateY(-101%); }
+      #splash.out { pointer-events: none; }
+      @keyframes vm-spin { to { transform: rotate(1turn); } }
+      @keyframes vm-glow {
+        0% { transform: rotate(0) scale(1); opacity: .55; }
+        50% { transform: rotate(.5turn) scale(.9); opacity: .3; }
+        100% { transform: rotate(1turn) scale(1); opacity: .55; }
+      }
+      @keyframes vm-draw { from { stroke-dasharray: 0 251.3; } }
+      @keyframes vm-pop { from { transform: scale(.4) rotate(-14deg); opacity: 0; } }
+      @keyframes vm-rise { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+      @keyframes vm-load { to { transform: scaleX(.88); } }
+      @media (prefers-reduced-motion: reduce) {
+        #splash * { animation: none !important; transition-duration: .2s !important; transition-delay: 0s !important; }
+        #splash .tag span { opacity: 1; }
+        #splash.out .cols i { transform: none; }
+        #splash.out { opacity: 0; transition: opacity .3s; }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash" role="status" aria-label="Loading Village Media">
+      <div class="cols" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="stage" aria-hidden="true">
+        <div class="mark">
+          <div class="glow"></div>
+          <svg class="ring" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="40" stroke="#e64018" />
+            <circle cx="50" cy="50" r="40" stroke="#dfa90d" />
+            <circle cx="50" cy="50" r="40" stroke="#2e9737" />
+            <circle cx="50" cy="50" r="40" stroke="#0486cd" />
+          </svg>
+          <img src="/logo.webp" width="384" height="384" alt="" fetchpriority="high" />
+        </div>
+        <p class="tag"><span>Local</span><span>businesses</span><span>on the</span><span>move</span></p>
+        <div class="bar"><b></b></div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

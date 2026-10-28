@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Landscape phones and other very short screens. */
+@custom-variant short (@media (max-height: 520px));
+
 /* Village Media brand, sampled from public/LOGO.png (same tokens as the ad platform).
    "brand" is the logo blue and is the main accent; the four logo colours are for stripes and highlights. */
 @theme {

@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { isSupabaseConfigured, listPackages, supabase, type Ad, type SalesPackage, type Tuktuk } from './lib/live'
 import { EXTRA_AREA_FEE, TERM_OPTIONS, VILLAGE_MEDIA, formatRand, signupUrl } from './lib/site'
-import { CityMapScene } from './components/pitch/CityMapScene'
 import { ProjectionSection } from './components/pitch/ProjectionSection'
+
+// three.js is most of the bundle; load the hero map after the page text has painted.
+const CityMapScene = lazy(() => import('./components/pitch/CityMapScene').then((m) => ({ default: m.CityMapScene })))
 
 gsap.registerPlugin(ScrollTrigger, useGSAP)
 
@@ -428,7 +430,9 @@ export function Pitch() {
       <section data-hero-section className="relative isolate flex min-h-svh flex-col overflow-hidden bg-zinc-950">
         <div className="brand-stripe absolute inset-x-0 top-0 z-20" aria-hidden />
         <div data-hero="scene" className="absolute inset-0 -z-10">
-          <CityMapScene theme="dark" className="h-full w-full" />
+          <Suspense fallback={null}>
+            <CityMapScene theme="dark" className="h-full w-full" />
+          </Suspense>
         </div>
         <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-zinc-950/85 via-zinc-950/30 to-transparent" aria-hidden />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-zinc-950 to-transparent" aria-hidden />
@@ -441,7 +445,10 @@ export function Pitch() {
             <div className="mb-6 flex flex-wrap items-center gap-5 sm:gap-7">
               <img
                 data-hero="logo"
-                src="/LOGO.png"
+                src="/logo.webp"
+                width={384}
+                height={384}
+                fetchPriority="high"
                 alt="Village Media — a Village Tuk advertising network"
                 className="h-20 w-auto drop-shadow-2xl sm:h-28 lg:h-32 lg:[@media(max-height:820px)]:h-20"
               />

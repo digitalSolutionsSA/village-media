@@ -1,0 +1,4 @@
+# Vite fingerprints everything in /assets, so browsers can keep it for good.
+# (Cloudflare Pages reads this file; netlify.toml says the same for Netlify.)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

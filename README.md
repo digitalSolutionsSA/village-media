@@ -19,8 +19,10 @@ npm run build    # static site in dist/
 ## What's different from the platform version
 
 - No router or staff login: it's a single public page.
-- "Sign up" buttons go to `VITE_SIGNUP_URL` (or dial 060 972 9534 if blank),
-  instead of the platform's `/admin/signup`.
+- "Sign up" buttons go to `VITE_SIGNUP_URL` instead of the platform's `/admin/signup`.
+  If that's blank they open a sign-up form, which `netlify/functions/enquiry.mts`
+  emails to sales@vm-group.co.za through Resend (`RESEND_API_KEY` in Netlify's
+  environment variables; see `.env.example`).
 - The projection pre-fills from `?name=…&area=…` in the URL, not from a lead.
 - Dark theme only.
 

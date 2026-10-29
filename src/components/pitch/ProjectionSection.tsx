@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { ADVERTISING_AREAS, EXTRA_AREA_FEE, signupUrl } from '../../lib/site'
+import { ADVERTISING_AREAS, EXTRA_AREA_FEE } from '../../lib/site'
+import { SignUpButton } from '../SignUp'
 
 /**
  * "What would my ad get?" — a clearly-labelled projection for a prospect, Standard
@@ -55,7 +56,6 @@ export function ProjectionSection({ heading }: { heading: ReactNode }) {
   const label = name.trim() || 'Your business'
   const areaList = areas.length === 1 ? areas[0] : `${areas.slice(0, -1).join(', ')} and ${areas[areas.length - 1]}`
 
-  const signupHref = signupUrl({ business: name.trim() })
   const fmt = (n: number) => Math.round(n).toLocaleString('en-ZA')
 
   return (
@@ -154,12 +154,13 @@ export function ProjectionSection({ heading }: { heading: ReactNode }) {
 
       <div data-reveal className="rounded-2xl border border-brand-500/40 bg-brand-500/10 p-6 text-center">
         <p className="mb-4 text-lg text-white">Want these screens working for {name.trim() || 'your business'}?</p>
-        <a
-          href={signupHref}
+        <SignUpButton
+          prefill={{ business: name.trim(), areas }}
+          params={{ business: name.trim() }}
           className="inline-block rounded-xl bg-green-600 px-8 py-4 text-lg font-semibold text-on-accent hover:bg-green-500"
         >
           ✎ Sign up now
-        </a>
+        </SignUpButton>
       </div>
     </div>
   )

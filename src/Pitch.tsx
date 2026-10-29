@@ -3,9 +3,10 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { getSupabase, isSupabaseConfigured, listPackages, type Ad, type SalesPackage, type Tuktuk } from './lib/live'
-import { EXTRA_AREA_FEE, TERM_OPTIONS, VILLAGE_MEDIA, formatRand, signupUrl } from './lib/site'
+import { EXTRA_AREA_FEE, TERM_OPTIONS, VILLAGE_MEDIA, formatRand } from './lib/site'
 import { dismissSplashWhen, splashLifting } from './lib/splash'
 import { ProjectionSection } from './components/pitch/ProjectionSection'
+import { SignUpButton, SignUpDialog } from './components/SignUp'
 
 // three.js is most of the bundle, so it is its own chunk. Start fetching it straight away;
 // the loading screen waits for it so the map is already there when the screen lifts.
@@ -255,7 +256,6 @@ export function Pitch() {
   )
   const adsRunning = Math.max(MIN_ADS_RUNNING, ads.length)
   const shownPackages = packages.length ? packages : BROCHURE_PACKAGES
-  const signupHref = (p: SalesPackage) => signupUrl({ package: p.id })
 
   // Hero entrance — once, as the loading screen lifts.
   useGSAP(
@@ -494,12 +494,9 @@ export function Pitch() {
               >
                 📈 See what your ad gets
               </button>
-              <a
-                href={signupUrl()}
-                className="rounded-full bg-logo-green px-6 py-3.5 text-base font-semibold text-on-accent shadow-xl shadow-green-500/25 hover:brightness-110 sm:px-7 sm:py-4"
-              >
+              <SignUpButton className="rounded-full bg-logo-green px-6 py-3.5 text-base font-semibold text-on-accent shadow-xl shadow-green-500/25 hover:brightness-110 sm:px-7 sm:py-4">
                 ✎ Sign up now
-              </a>
+              </SignUpButton>
             </div>
           </div>
         </div>
@@ -618,12 +615,13 @@ export function Pitch() {
                       </li>
                     ))}
                   </ul>
-                  <a
-                    href={signupHref(p)}
+                  <SignUpButton
+                    prefill={{ package: p.name }}
+                    params={{ package: p.id }}
                     className="mt-auto rounded-full bg-logo-green py-4 text-center text-lg font-semibold text-on-accent hover:brightness-110"
                   >
                     ✎ Sign up with {p.name.replace(/ package$/i, '')}
-                  </a>
+                  </SignUpButton>
                 </div>
               </TiltCard>
             )
@@ -799,18 +797,40 @@ export function Pitch() {
             <SplitWords text="Ready to get on screen?" wordAttr="data-split-word" />
           </h2>
           <p data-reveal data-reveal-start="top bottom" className="mx-auto mb-10 max-w-2xl text-lg text-on-accent/85 sm:text-xl">
-            Sign right here on the tablet — you get a copy of the agreement by email. Questions? Call {VILLAGE_MEDIA.telephone}.
+            Sign up in a minute and our sales team will get your ad on screen.
           </p>
           <div data-reveal data-reveal-start="top bottom">
-            <a
-              href={signupUrl()}
-              className="inline-block rounded-full bg-logo-green px-12 py-5 text-xl font-semibold text-on-accent shadow-2xl hover:brightness-110"
-            >
+            <SignUpButton className="inline-block rounded-full bg-logo-green px-12 py-5 text-xl font-semibold text-on-accent shadow-2xl hover:brightness-110">
               ✎ Sign up now
-            </a>
+            </SignUpButton>
           </div>
+          <p data-reveal data-reveal-start="top bottom" className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3 text-base font-semibold sm:text-lg">
+            <a href={`mailto:${VILLAGE_MEDIA.email}`} className="underline decoration-on-accent/40 underline-offset-4 hover:decoration-on-accent">
+              ✉ {VILLAGE_MEDIA.email}
+            </a>
+            <a href={`https://${VILLAGE_MEDIA.website}`} target="_blank" rel="noopener" className="underline decoration-on-accent/40 underline-offset-4 hover:decoration-on-accent">
+              ↗ {VILLAGE_MEDIA.website}
+            </a>
+          </p>
         </div>
       </section>
+
+      <footer className="bg-zinc-950 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <img
+          src="/digital-solutions-banner.png"
+          alt="Site proudly built by Digital Solutions SA"
+          width={1000}
+          height={50}
+          loading="lazy"
+          className="mx-auto hidden h-auto w-full max-w-[1000px] sm:block"
+        />
+        <p className="flex items-center justify-center gap-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-300 sm:hidden">
+          Site proudly built by
+          <img src="/digital-solutions-logo.png" alt="Digital Solutions SA" width={110} height={50} loading="lazy" className="h-10 w-auto" />
+        </p>
+      </footer>
+
+      <SignUpDialog />
     </div>
   )
 }

@@ -56,3 +56,13 @@ body {
     var(--color-logo-blue) 75% 100%
   );
 }
+
+/* Customer spotlight (components/pitch/Spotlight.tsx). */
+@keyframes spotlight-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes spotlight-zoom {
+  from { transform: scale(1.08); }
+  to { transform: scale(1); }
+}

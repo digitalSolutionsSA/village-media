@@ -6,6 +6,7 @@ import { getSupabase, isSupabaseConfigured, listPackages, type Ad, type SalesPac
 import { EXTRA_AREA_FEE, TERM_OPTIONS, VILLAGE_MEDIA, formatRand } from './lib/site'
 import { dismissSplashWhen, splashLifting } from './lib/splash'
 import { ProjectionSection } from './components/pitch/ProjectionSection'
+import { Spotlight } from './components/pitch/Spotlight'
 import { SignUpButton, SignUpDialog } from './components/SignUp'
 
 // three.js is most of the bundle, so it is its own chunk. Start fetching it straight away;
@@ -439,7 +440,7 @@ export function Pitch() {
       )
       ScrollTrigger.refresh()
     },
-    { scope: rootRef, dependencies: [shownPackages.length], revertOnUpdate: true },
+    { scope: rootRef, dependencies: [shownPackages.length, ads.length], revertOnUpdate: true },
   )
 
   return (
@@ -565,6 +566,22 @@ export function Pitch() {
           </span>
         </p>
       </Band>
+
+      {/* ───────── Customer spotlight (live ads; hidden until there are some) ───────── */}
+      {ads.length > 0 && (
+        <Band glow={['bg-logo-gold', 'bg-logo-red']} className="bg-zinc-900/30">
+          <Spotlight
+            ads={ads}
+            heading={
+              <SectionHeading
+                eyebrow="Spotlight"
+                title="On screen right now."
+                intro="Local businesses already riding with us. Real ads, live on the tuk-tuk screens today."
+              />
+            }
+          />
+        </Band>
+      )}
 
       {/* ───────── Packages ───────── */}
       <Band glow={['bg-logo-red', 'bg-logo-blue']} className="bg-zinc-900/30">

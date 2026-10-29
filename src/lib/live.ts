@@ -6,6 +6,12 @@ export interface Ad {
   id: string
   title: string
   is_active: boolean
+  /** Usually blank: the title then names the business ("Agile Gas #1"). */
+  advertiser_name: string | null
+  media_url: string
+  media_type: 'image' | 'video'
+  duration_seconds: number
+  client_id: string | null
 }
 
 export interface Tuktuk {
